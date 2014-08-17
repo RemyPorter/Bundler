@@ -5,7 +5,7 @@ import collections
 
 Entry = namedtuple("Entry", "description path")
 
-ENTRY = Combine(quotedString("Description") + Suppress(",") + restOfLine("Path"))("entry").setParseAction(lambda x: Entry(x.entry.Description, x.entry.Path))
+ENTRY = Combine(quotedString("Description") + Suppress(",") + restOfLine("Path"))("entry").setParseAction(lambda x: Entry(x.entry.Description.replace('"',""), x.entry.Path))
 BUNDLE = ZeroOrMore(ENTRY)
 
 def loadguard(function):
@@ -56,3 +56,22 @@ class Bundle(collections.Iterable):
 		with open(self.bundleFile, "w") as output:
 			for l in self.__lines:
 				output.write(self.__entrystring(l))
+
+class BundleProcessor:
+	def __init__(self, bundle):
+		self.__bundle = bundle
+
+	def __get(self, path):
+		try:
+			with open(path) as file:
+				for l in file:
+					yield l
+		except Error as err:
+			print("Failed to open file: {0}".format(err))
+
+	def merge_to(self, output_path):
+		with open(output_path, "w") as output:
+			for input in self.__bundle:
+				output.write("# {0}\n".format(input.description))
+				for line in self.__get(input.path):
+					output.write(line + "\n")
