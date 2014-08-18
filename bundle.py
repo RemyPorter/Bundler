@@ -3,10 +3,7 @@ import os.path as path
 from collections import namedtuple
 import collections
 
-Entry = namedtuple("Entry", "description path")
-
-ENTRY = Combine(quotedString("Description") + Suppress(",") + restOfLine("Path"))("entry").setParseAction(lambda x: Entry(x.entry.Description.replace('"',""), x.entry.Path))
-BUNDLE = ZeroOrMore(ENTRY)
+Entry = namedtuple("Entry", "description path section")
 
 def loadguard(function):
 	def wrapper(*args, **kwargs):
@@ -20,9 +17,33 @@ class Bundle(collections.Iterable):
 		self.bundleFile = bundleFile
 		self.__loaded = False
 		self.__lines = []
+		self.__instance = Entry(None, None, None)
+		self.__currentsection = None
+		self.__buildgrammar()
+
+	def __buildgrammar(self):
+		PATH = CharsNotIn(",\n")("Path")
+		DESCRIPTION = Suppress(",") + restOfLine("Description")
+		ENTRY = Combine(PATH + Optional(DESCRIPTION))("entry").setParseAction(self.__entry)
+		SECTION = Combine(Suppress("#") + restOfLine("Section")).setParseAction(self.__section)
+		LINE = SECTION | ENTRY
+		BUNDLE = ZeroOrMore(LINE)
+		self.BUNDLE = BUNDLE
+		self.LINE = LINE
+		self.ENTRY = ENTRY
+		self.SECTION = SECTION
+
+	
+	def __section(self, section):
+		self.__currentsection = section.Section
+
+	def __entry(self, x):
+		return Entry(x.entry.Description.replace('"', ""), x.entry.Path.replace('"', ""), self.__currentsection)
 
 	def load(self):
-		self.__lines = BUNDLE.parseFile(self.bundleFile)
+		parsed = self.BUNDLE.parseFile(self.bundleFile)
+		self.__lines = [x for x in parsed if type(x) == type(self.__instance)]
+		self.__loaded = True
 
 	@property
 	def loaded(self):
@@ -70,8 +91,11 @@ class BundleProcessor:
 			print("Failed to open file: {0}".format(err))
 
 	def merge_to(self, output_path):
-		with open(output_path, "w") as output:
-			for input in self.__bundle:
-				output.write("# {0}\n".format(input.description))
-				for line in self.__get(input.path):
-					output.write(line + "\n")
+		try:
+			with open(output_path, "w") as output:
+				for input in self.__bundle:
+					output.write("# {0}\n".format(input.description))
+					for line in self.__get(input.path):
+						output.write(line + "\n")
+		except Error as err:
+			print("Error writing: {0}".format(err))
