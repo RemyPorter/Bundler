@@ -91,10 +91,15 @@ class BundleProcessor:
 			print("Failed to open file: {0}".format(err))
 
 	def merge_to(self, output_path):
+		lastSection = ""
 		try:
 			with open(output_path, "w") as output:
 				for input in self.__bundle:
-					output.write("# {0}\n".format(input.description))
+					if lastSection != input.section and input.section != "":
+						output.write("# {0}\n".format(input.section))
+						lastSection = input.section
+					if input.description != "":
+						output.write("## {0}\n".format(input.description))
 					for line in self.__get(input.path):
 						output.write(line + "\n")
 		except Error as err:
