@@ -41,6 +41,7 @@ class Bundle(collections.Iterable):
 		return Entry(x.entry.Description.replace('"', ""), x.entry.Path.replace('"', ""), self.__currentsection)
 
 	def load(self):
+		self.__currentsection = None
 		parsed = self.BUNDLE.parseFile(self.bundleFile)
 		self.__lines = [x for x in parsed if type(x) == type(self.__instance)]
 		self.__loaded = True
