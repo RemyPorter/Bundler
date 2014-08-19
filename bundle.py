@@ -1,5 +1,5 @@
 from pyparsing import *
-import os.path as path
+import os.path as pth
 from collections import namedtuple
 import collections
 
@@ -84,11 +84,13 @@ class BundleProcessor:
 		self.__bundle = bundle
 
 	def __get(self, path):
+		expath = pth.expanduser(path)
+		expath = pth.expandvars(expath)
 		try:
-			with open(path) as file:
+			with open(expath) as file:
 				for l in file:
 					yield l
-		except Error as err:
+		except Exception as err:
 			print("Failed to open file: {0}".format(err))
 
 	def merge_to(self, output_path):
@@ -103,5 +105,5 @@ class BundleProcessor:
 						output.write("## {0}\n".format(input.description))
 					for line in self.__get(input.path):
 						output.write(line + "\n")
-		except Error as err:
+		except Exception as err:
 			print("Error writing: {0}".format(err))
